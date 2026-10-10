@@ -436,12 +436,14 @@ class Puzzle(list):
         return "\n".join(str(row) for row in self)
 
 
-def generate_puzzle(level=2, rng=None):
-    """Return a Puzzle (2D list) of the given level. Default level 2 = Easy."""
+def generate_puzzle(level=2, rng=None, with_solution=False):
+    """Return a plain 9x9 list of lists (0 = empty cell). Default level 2 = Easy.
+    With with_solution=True, return (puzzle, solution) instead, both 9x9."""
     flat_puzzle, flat_solution = generate(level, rng)
-    p = Puzzle([flat_puzzle[r * 9:(r + 1) * 9] for r in range(9)])
-    p.solution = [flat_solution[r * 9:(r + 1) * 9] for r in range(9)]
-    return p
+    puzzle = [flat_puzzle[r * 9:(r + 1) * 9] for r in range(9)]
+    if with_solution:
+        return puzzle, [flat_solution[r * 9:(r + 1) * 9] for r in range(9)]
+    return puzzle
 
 
 def format_grid(grid):
@@ -485,3 +487,6 @@ def main():
 if __name__ == "__main__":
     main()
 """
+
+n = generate_puzzle(4)
+print(n)
