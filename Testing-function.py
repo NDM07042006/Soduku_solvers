@@ -1,4 +1,4 @@
-"""
+     """
 2 test case minh hoa cach dung ham scamo_scl(variables, w) trong thuc te:
 - Test case 1: giai mot bai toan SCAMO don gian, in ra 1 nghiem va tu kiem
   tra bang tay xem co dung khong.
