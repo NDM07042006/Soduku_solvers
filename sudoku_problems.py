@@ -426,11 +426,29 @@ def generate(level, rng=None, max_attempts=40):
     return propagate(puzzle, terminal, rng)
 
 
+class Puzzle(list):
+    """A 9x9 puzzle as a normal list of 9 lists (0 = empty cell).
+    print(p) shows one row per line; p.solution holds the solved grid (also 9x9)."""
+
+    solution = None
+
+    def __str__(self):
+        return "\n".join(str(row) for row in self)
+
+
+def generate_puzzle(level=2, rng=None):
+    """Return a Puzzle (2D list) of the given level. Default level 2 = Easy."""
+    flat_puzzle, flat_solution = generate(level, rng)
+    p = Puzzle([flat_puzzle[r * 9:(r + 1) * 9] for r in range(9)])
+    p.solution = [flat_solution[r * 9:(r + 1) * 9] for r in range(9)]
+    return p
+
+
 def format_grid(grid):
     """One list per row, e.g. [8, 1, 2, 7, 5, 3, 6, 4, 9]; 0 = empty cell."""
     return "\n".join(str(list(grid[r * 9:(r + 1) * 9])) for r in range(9))
 
-
+"""
 def main():
     ap = argparse.ArgumentParser(description="Sudoku generator (5 difficulty levels)")
     ap.add_argument("-l", "--level", type=int, choices=range(1, 6), help="1..5 (default: all levels)")
@@ -466,18 +484,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-import random
-
-# Generate one puzzle (level 1-5)
-puzzle, solution = generate(4)
-
-# Both are flat lists of 81 numbers, with 0 for an empty cell.
-# Convert to 9 rows if you want nested lists:
-puzzle_rows = [puzzle[r*9:(r+1)*9] for r in range(9)]
-solution_rows = [solution[r*9:(r+1)*9] for r in range(9)]
-
-# Print in the list-per-row format
-print(format_grid(puzzle))
+"""
