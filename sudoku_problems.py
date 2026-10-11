@@ -526,7 +526,7 @@ def format_grid(grid):
     n = isqrt(len(grid))
     return "\n".join(str(list(grid[r * n:(r + 1) * n])) for r in range(n))
 
-
+"""
 def main():
     ap = argparse.ArgumentParser(description="Sudoku generator (5 difficulty levels)")
     ap.add_argument("-l", "--level", type=int, choices=range(1, 6), help="1..5 (default: all levels)")
@@ -563,3 +563,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+"""
