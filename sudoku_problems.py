@@ -542,13 +542,43 @@ def generate(level, rng=None, max_attempts=None, size=9):
     return propagate(puzzle, terminal, rng)
 
 
-def generate_puzzle(level=2, rng=None, with_solution=False, size=9):
-    """Return a plain size x size list of lists (0 = empty cell). Default: level 2 = Easy, 9x9.
-    With with_solution=True, return (puzzle, solution) instead, both as 2D lists."""
-    flat_puzzle, flat_solution = generate(level, rng, size=size)
-    puzzle = [flat_puzzle[r * size:(r + 1) * size] for r in range(size)]
+
+def generate_puzzle(difficulty=1, rng=None, with_solution=False, size=9):
+    """
+    New difficulty mapping:
+        difficulty=1 -> randomly select original level 2, 3, or 4
+        difficulty=2 -> original level 5 (Evil)
+    """
+    if difficulty == 1:
+        # Randomly choose one of the original levels 2, 3, or 4
+        rng = rng or random.Random()
+        original_level = rng.choice([2, 3, 4])
+
+    elif difficulty == 2:
+        # Use the original level 5 (Evil)
+        original_level = 5
+
+    else:
+        raise ValueError("difficulty must be 1 or 2")
+
+    flat_puzzle, flat_solution = generate(
+        original_level,
+        rng=rng,
+        size=size
+    )
+
+    puzzle = [
+        flat_puzzle[r * size:(r + 1) * size]
+        for r in range(size)
+    ]
+
     if with_solution:
-        return puzzle, [flat_solution[r * size:(r + 1) * size] for r in range(size)]
+        solution = [
+            flat_solution[r * size:(r + 1) * size]
+            for r in range(size)
+        ]
+        return puzzle, solution
+
     return puzzle
 
 

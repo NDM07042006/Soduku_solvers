@@ -1,0 +1,13 @@
+[
+  {
+    "seed": 0,
+    "givens": 648,
+    "target": 648,
+    "seconds": 0.01,
+    "unique_guaranteed": false,
+    "proven_removals": 0,
+    "kept_unknown": 0,
+    "kept_not_unique": 0,
+    "timed_out": false
+  }
+]
