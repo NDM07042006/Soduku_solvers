@@ -149,7 +149,7 @@ def make_puzzle(sol, rng, target, unique=False, solver=None, budget=20000, time_
 _SOLVER_CACHE = {}
 
 
-def generate_puzzle36x36(givens=400, seed=None, unique=False, with_solution=False, flat=False,
+def generate_puzzle36x36(givens=450, seed=None, unique=False, with_solution=False, flat=False,
                     budget=20000, time_limit=None, sat_solver="g4"):
     """Return a 36x36 puzzle as a list of 36 lists (0 = empty cell).
 
@@ -227,3 +227,5 @@ def main():
     with open(os.path.join(a.out, "meta.json"), "w") as f:
         json.dump(meta, f, indent=2)
 
+n= generate_puzzle36x36(givens=300)
+print(n)
