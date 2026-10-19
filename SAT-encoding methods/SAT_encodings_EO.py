@@ -1,9 +1,7 @@
 from math import ceil, log2, sqrt, isqrt
 
 
-# ---------- helpers ----------
 def var_id(r, c, v, n):
-    """Variable for 'cell (r,c) has value v' (r, c, v are 0-based). IDs start at 1."""
     return r * n * n + c * n + v + 1
 
 
@@ -11,7 +9,6 @@ def alo(lits):
     return [list(lits)]
 
 
-# ---------- AMO encodings: all share the signature (lits, next_var) -> (clauses, next_var) ----------
 def pairwise_amo(lits, next_var=None):
     clauses = []
     for i in range(len(lits)):
@@ -101,7 +98,6 @@ def binary_amo(lits, next_var):
     return clauses, next_var + m
 
 
-# ---------- dispatch ----------
 AMO_ENCODINGS = {
     "pairwise": pairwise_amo,
     "sequential": sequential_amo,
@@ -112,7 +108,6 @@ AMO_ENCODINGS = {
 
 
 def exactly_one(lits, encoding, next_var):
-    """ALO + selected AMO encoding."""
     key = encoding.lower()
     if key not in AMO_ENCODINGS:
         raise ValueError(f"encoding must be one of {list(AMO_ENCODINGS)}")
@@ -123,14 +118,7 @@ def exactly_one(lits, encoding, next_var):
 
 # ---------- Sudoku ----------
 def sudoku_clauses(grid, encoding="pairwise"):
-    """
-    Convert a Sudoku grid into CNF clauses (0 = empty cell).
-    encoding: "pairwise", "sequential", "commander", "product", or "binary".
 
-    Returns:
-        clauses: CNF clauses
-        max_var: largest variable ID used
-    """
     n = len(grid)
     box_size = isqrt(n)
 
@@ -151,22 +139,18 @@ def sudoku_clauses(grid, encoding="pairwise"):
         new_clauses, next_var = exactly_one(lits, encoding, next_var)
         clauses.extend(new_clauses)
 
-    # 1. Cell: exactly one value
     for r in range(n):
         for c in range(n):
             add_exactly_one([var_id(r, c, v, n) for v in range(n)])
 
-    # 2. Row/value: exactly once
     for r in range(n):
         for v in range(n):
             add_exactly_one([var_id(r, c, v, n) for c in range(n)])
 
-    # 3. Column/value: exactly once
     for c in range(n):
         for v in range(n):
             add_exactly_one([var_id(r, c, v, n) for r in range(n)])
 
-    # 4. Box/value: exactly once
     for box_r in range(0, n, box_size):
         for box_c in range(0, n, box_size):
             for v in range(n):
@@ -176,7 +160,6 @@ def sudoku_clauses(grid, encoding="pairwise"):
                     for c in range(box_c, box_c + box_size)
                 ])
 
-    # 5. Givens
     for r in range(n):
         for c in range(n):
             if grid[r][c] != 0:
@@ -186,7 +169,6 @@ def sudoku_clauses(grid, encoding="pairwise"):
 
 
 def decode(model, n):
-    """Turn a SAT model (list of signed ints) into an n x n grid."""
     true_vars = {l for l in model if l > 0}
     grid = [[0] * n for _ in range(n)]
     for r in range(n):

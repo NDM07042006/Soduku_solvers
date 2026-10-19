@@ -1,36 +1,3 @@
-#!/usr/bin/env python3
-"""
-Sudoku generator with 5 difficulty levels for 4x4, 9x9, 16x16 and 25x25 boards,
-following the "dig-hole" approach of Team #3485,
-"Sudoku Puzzles Generating: from Easy to Evil".
-
-Pipeline (paper section 5):
-  1. Terminal pattern  : Las Vegas algorithm (random givens + randomized DFS, retry on failure)
-                         (25x25: base pattern + equivalence shuffles, Las Vegas is hopeless there)
-  2. Digging holes     : - Operator 1: dig sequence depends on level
-                         - Operator 2: restrictions (total givens bound, min givens per row/col)
-                         - Operator 3: uniqueness by reduction to absurdity
-                         - Operator 4: pruning (each cell is tried once, never refilled)
-                         - Operator 5: equivalent propagation (relabel digits, swap rows/cols/bands...)
-  3. Grading           : 4 weighted factors (givens, row/col lower bound, human technique, DFS search count)
-
-Usage:
-    python sudoku_generator.py                       # one 9x9 puzzle for each of the 5 levels
-    python sudoku_generator.py --size 4              # 4x4 puzzles
-    python sudoku_generator.py --size 25 -l 2        # one 25x25 Easy puzzle
-    python sudoku_generator.py -l 3 -n 2 --seed 42 -s
-
-In code:
-    import sudoku_generator as sg
-    p = sg.generate_puzzle(2)             # 9x9 Easy, plain list of lists (0 = empty)
-    p = sg.generate_puzzle(2, size=4)     # 4x4 Easy
-    p = sg.generate_puzzle(3, size=25)    # 25x25 Medium
-
-Requires Python 3.10+ (int.bit_count).
-
-Notes for sizes other than 9: the given-count ranges and the per-row/column minimums of the paper
-(which are defined for 9x9) are scaled proportionally to the board size.
-"""
 
 import argparse
 import random
@@ -45,15 +12,11 @@ SUPPORTED_SIZES = (4, 9, 16, 25)
 
 
 class _PopCount:
-    """Indexable popcount, replaces a 2**n lookup table (impossible for n >= 25)."""
 
     def __getitem__(self, m):
         return m.bit_count()
 
 
-# --------------------------------------------------------------------------- #
-# Board geometry (works for any perfect-square size in SUPPORTED_SIZES)
-# --------------------------------------------------------------------------- #
 class Geometry:
     def __init__(self, size):
         box = isqrt(size)
@@ -92,21 +55,15 @@ def get_geometry(size):
 
 
 def geom_of(grid):
-    """Geometry that matches a flat grid (16, 81, 256 or 625 cells)."""
     return get_geometry(isqrt(len(grid)))
 
 
-# 9x9 shortcuts (kept for convenience / backward compatibility)
 _G9 = get_geometry(9)
 ALL, ROW, COL, BOX, POP = _G9.all, _G9.row, _G9.col, _G9.blk, _G9.pop
 ROW_UNITS, COL_UNITS, BOX_UNITS, UNITS, PEERS = (
     _G9.row_units, _G9.col_units, _G9.box_units, _G9.units, _G9.peers)
 
-# --------------------------------------------------------------------------- #
-# Difficulty configuration (paper Tables 1, 2, 7) -- defined for 9x9
-# --------------------------------------------------------------------------- #
 LEVELS = {
-    #  name               givens range  min givens per row/col  dig sequence
     1: dict(name="Extremely easy", givens=(51, 60), rc_min=5, seq="random"),
     2: dict(name="Easy",           givens=(36, 49), rc_min=4, seq="random"),
     3: dict(name="Medium",         givens=(32, 35), rc_min=3, seq="jump"),
@@ -114,8 +71,6 @@ LEVELS = {
     5: dict(name="Evil",           givens=(22, 27), rc_min=0, seq="row"),
 }
 
-# Hand-tuned given ranges for the other sizes (values that the greedy digger can really reach;
-# a 4x4 sudoku needs at least 4 givens to be unique, bigger boards need far more than the 9x9 ratio).
 GIVENS_OTHER = {
     4: {1: (11, 12), 2: (9, 10), 3: (7, 8), 4: (6, 6), 5: (4, 5)},
     16: {1: (190, 220), 2: (150, 175), 3: (125, 145), 4: (110, 124), 5: (95, 109)},
@@ -127,13 +82,10 @@ def level_config(level, gm):
     cfg = dict(LEVELS[level])
     if gm.n != 9:
         cfg["givens"] = GIVENS_OTHER[gm.n][level]
-        cfg["rc_min"] = round(cfg["rc_min"] * gm.n / 9)  # proportional lower bound per row/column
+        cfg["rc_min"] = round(cfg["rc_min"] * gm.n / 9)
     return cfg
 
 
-# --------------------------------------------------------------------------- #
-# Solver: depth-first search with backtracking (bitmask + "fewest candidates" cell choice)
-# --------------------------------------------------------------------------- #
 class Solver:
     def __init__(self, grid, rng=None, node_limit=None):
         gm = self.gm = geom_of(grid)
@@ -206,9 +158,6 @@ class Solver:
                 return
 
 
-# --------------------------------------------------------------------------- #
-# Step 1: terminal pattern by Las Vegas algorithm
-# --------------------------------------------------------------------------- #
 def _random_givens(rng, gm, n):
     g = [0] * gm.cells
     for i in rng.sample(range(gm.cells), n):
@@ -224,10 +173,6 @@ def _random_givens(rng, gm, n):
 
 
 def create_terminal_pattern(rng, n_givens=None, node_limit=None, size=9):
-    """Randomly place a few givens (paper: 11 on a 9x9 board is the best trade-off), try to complete
-    the grid within a small budget; if that fails, repeat (Las Vegas: always correct, random time).
-    For size >= 25 the Las Vegas approach practically never succeeds, so a valid grid is built from
-    the standard base pattern and then scrambled with the equivalence operations of `propagate`."""
     gm = get_geometry(size)
     if size >= 25:
         n, b = gm.n, gm.box
@@ -246,31 +191,24 @@ def create_terminal_pattern(rng, n_givens=None, node_limit=None, size=9):
             return sol[0]
 
 
-# --------------------------------------------------------------------------- #
-# Step 2: digging holes
-# --------------------------------------------------------------------------- #
 def dig_sequence(kind, rng, size=9):
-    """Operator 1: order in which cells are tried."""
     gm = get_geometry(size)
     n = gm.n
-    if kind == "row":  # Sequence 1: left->right, top->bottom
+    if kind == "row":
         return list(range(gm.cells))
-    if kind == "snake":  # Sequence 2: wandering along "S"
+    if kind == "snake":
         return [r * n + (c if r % 2 == 0 else n - 1 - c) for r in range(n) for c in range(n)]
-    if kind == "jump":  # Sequence 3: jumping one cell (checkerboard, then the other colour)
+    if kind == "jump":
         cells = list(range(gm.cells))
         return [i for i in cells if (gm.row[i] + gm.col[i]) % 2 == 0] + [
             i for i in cells if (gm.row[i] + gm.col[i]) % 2 == 1
         ]
-    seq = list(range(gm.cells))  # Sequence 4: randomize globally
+    seq = list(range(gm.cells))
     rng.shuffle(seq)
     return seq
 
 
 def _forced(puzzle, idx, d, gm):
-    """True if digit d is forced at the (empty) cell idx by a hidden single in one of its units:
-    in some unit, every other empty cell already sees a d among its peers. Then removing the given
-    cannot create a second solution, so the expensive solver runs are unnecessary."""
     for unit in (gm.row_units[gm.row[idx]], gm.col_units[gm.col[idx]], gm.box_units[gm.blk[idx]]):
         if all(o == idx or puzzle[o] or any(puzzle[p] == d for p in gm.peers[o]) for o in unit):
             return True
@@ -278,16 +216,10 @@ def _forced(puzzle, idx, d, gm):
 
 
 def unique_after_dig(puzzle, idx, node_limit=None):
-    """Operator 3: reduction to absurdity.
-    Clear cell idx (value d). Try every other digit d' that obeys the rules; if the puzzle
-    can be solved with d' there, a 2nd solution exists -> the dig is illegal.
-    (If a solver run is aborted by node_limit the answer is unknown, so the dig is rejected:
-    uniqueness is therefore always guaranteed.)
-    Returns True (and leaves the cell empty) if the solution stays unique; else restores d."""
     gm = geom_of(puzzle)
     d = puzzle[idx]
     puzzle[idx] = 0
-    if _forced(puzzle, idx, d, gm):  # cheap shortcut: value is forced by a hidden single
+    if _forced(puzzle, idx, d, gm):
         return True
     used = 0
     for p in gm.peers[idx]:
@@ -300,7 +232,7 @@ def unique_after_dig(puzzle, idx, node_limit=None):
         test[idx] = d2
         solver = Solver(test, node_limit=node_limit)
         if solver.solve(1) or solver.aborted:
-            puzzle[idx] = d  # not unique -> refill (this cell is never tried again: pruning)
+            puzzle[idx] = d
             return False
     return True
 
@@ -309,16 +241,16 @@ def dig_holes(terminal, level, rng):
     gm = geom_of(terminal)
     cfg = level_config(level, gm)
     lo, hi = cfg["givens"]
-    bound = rng.randint(lo, hi)  # Restriction 1: random bound inside the level's range
+    bound = rng.randint(lo, hi)
     node_limit = None if gm.n <= 9 else (20000 if gm.n == 16 else 5000)
     puzzle = list(terminal)
     givens = gm.cells
     row_cnt, col_cnt = [gm.n] * gm.n, [gm.n] * gm.n
-    for idx in dig_sequence(cfg["seq"], rng, gm.n):  # each cell is tried at most once (Operator 4)
+    for idx in dig_sequence(cfg["seq"], rng, gm.n):
         if givens <= bound:
             break
         if row_cnt[gm.row[idx]] - 1 < cfg["rc_min"] or col_cnt[gm.col[idx]] - 1 < cfg["rc_min"]:
-            continue  # Restriction 2: keep enough givens in every row / column
+            continue
         if unique_after_dig(puzzle, idx, node_limit):
             givens -= 1
             row_cnt[gm.row[idx]] -= 1
@@ -326,9 +258,6 @@ def dig_holes(terminal, level, rng):
     return puzzle
 
 
-# --------------------------------------------------------------------------- #
-# Operator 5: equivalent propagation (keeps the puzzle valid and unique)
-# --------------------------------------------------------------------------- #
 def propagate(puzzle, solution, rng):
     gm = geom_of(puzzle)
     n, box = gm.n, gm.box
@@ -361,10 +290,6 @@ def propagate(puzzle, solution, rng):
     return transform(puzzle), transform(solution)
 
 
-# --------------------------------------------------------------------------- #
-# Grading (paper section 4). For sizes other than 9 the givens / row-col scores are computed on the
-# 9x9-equivalent ratio; the DFS-trial thresholds are the paper's absolute numbers.
-# --------------------------------------------------------------------------- #
 def _score_givens(n, cells=81):
     n = n * 81 / cells
     return 1 if n > 50 else 2 if n >= 36 else 3 if n >= 32 else 4 if n >= 28 else 5
@@ -380,8 +305,6 @@ def _score_search(n):
 
 
 def human_technique_score(puzzle):
-    """Highest technique needed (Table 3): 1 elimination/naked single, 2 lone ranger (hidden single),
-    3 twins (naked pairs), 4 triplets (naked triples), 5 brute force (anything else)."""
     gm = geom_of(puzzle)
     pop, units, n = gm.pop, gm.units, gm.n
     g = list(puzzle)
@@ -458,7 +381,6 @@ class _Cap(Exception):
 
 
 def dfs_search_count(puzzle, cap=100000):
-    """Plain DFS (left->right, top->bottom) enumerating ALL solutions; counts successful trials."""
     gm = geom_of(puzzle)
     n = gm.n
     g = list(puzzle)
@@ -501,7 +423,6 @@ def dfs_search_count(puzzle, cap=100000):
 
 
 def grade(puzzle):
-    """Weighted score: 0.4*givens + 0.2*row/col bound + 0.2*technique + 0.2*search (paper Table 5)."""
     gm = geom_of(puzzle)
     n_given = sum(1 for v in puzzle if v)
     rc_min = min(
@@ -518,11 +439,7 @@ def grade(puzzle):
     )
 
 
-# --------------------------------------------------------------------------- #
-# Public API
-# --------------------------------------------------------------------------- #
 def generate(level, rng=None, max_attempts=None, size=9):
-    """Generate one puzzle of the given level (1..5). Returns flat lists (puzzle, solution)."""
     rng = rng or random.Random()
     gm = get_geometry(size)
     if max_attempts is None:
@@ -544,18 +461,11 @@ def generate(level, rng=None, max_attempts=None, size=9):
 
 
 def generate_puzzle(difficulty=1, rng=None, with_solution=False, size=9):
-    """
-    New difficulty mapping:
-        difficulty=1 -> randomly select original level 2, 3, or 4
-        difficulty=2 -> original level 5 (Evil)
-    """
     if difficulty == 1:
-        # Randomly choose one of the original levels 2, 3, or 4
         rng = rng or random.Random()
         original_level = rng.choice([2, 3, 4])
 
     elif difficulty == 2:
-        # Use the original level 5 (Evil)
         original_level = 5
 
     else:
@@ -583,7 +493,6 @@ def generate_puzzle(difficulty=1, rng=None, with_solution=False, size=9):
 
 
 def format_grid(grid):
-    """One list per row, e.g. [8, 1, 2, 7, 5, 3, 6, 4, 9]; 0 = empty cell."""
     n = isqrt(len(grid))
     return "\n".join(str(list(grid[r * n:(r + 1) * n])) for r in range(n))
 

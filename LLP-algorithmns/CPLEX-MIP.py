@@ -14,7 +14,6 @@ def solve_cplex_mip(grid):
 
     model = Model(name="Sudoku_MIP")
 
-    # x[r,c,v] = 1 nếu ô (r,c) nhận giá trị v+1
     x = {
         (r, c, v): model.binary_var(name=f"x_{r}_{c}_{v+1}")
         for r in range(n)
@@ -22,28 +21,24 @@ def solve_cplex_mip(grid):
         for v in range(n)
     }
 
-    # Mỗi ô có đúng một giá trị
     for r in range(n):
         for c in range(n):
             model.add_constraint(
                 model.sum(x[r, c, v] for v in range(n)) == 1
             )
 
-    # Mỗi giá trị xuất hiện đúng một lần trong mỗi hàng
     for r in range(n):
         for v in range(n):
             model.add_constraint(
                 model.sum(x[r, c, v] for c in range(n)) == 1
             )
 
-    # Mỗi giá trị xuất hiện đúng một lần trong mỗi cột
     for c in range(n):
         for v in range(n):
             model.add_constraint(
                 model.sum(x[r, c, v] for r in range(n)) == 1
             )
 
-    # Mỗi giá trị xuất hiện đúng một lần trong mỗi box
     for br in range(0, n, box):
         for bc in range(0, n, box):
             for v in range(n):
@@ -55,14 +50,12 @@ def solve_cplex_mip(grid):
                     ) == 1
                 )
 
-    # Các ô đã cho
     for r in range(n):
         for c in range(n):
             if grid[r][c] != 0:
                 v = grid[r][c] - 1
                 model.add_constraint(x[r, c, v] == 1)
 
-    # Sudoku chỉ cần tìm nghiệm khả thi, không cần hàm mục tiêu
     model.minimize(0)
 
     build_time = time.perf_counter() - start

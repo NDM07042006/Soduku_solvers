@@ -24,14 +24,12 @@ def solve_cp_sat(grid):
         for r in range(n)
     ]
 
-    # Hàng và cột
     for r in range(n):
         model.add_all_different(x[r])
 
     for c in range(n):
         model.add_all_different([x[r][c] for r in range(n)])
 
-    # Box
     for br in range(0, n, box):
         for bc in range(0, n, box):
             cells = [
@@ -41,7 +39,6 @@ def solve_cp_sat(grid):
             ]
             model.add_all_different(cells)
 
-    # Các ô đã cho
     for r in range(n):
         for c in range(n):
             if grid[r][c] != 0:
@@ -66,8 +63,6 @@ def solve_cp_sat(grid):
         status = "UNSAT"
         solved_grid = None
     else:
-        # UNKNOWN: ví dụ hết thời gian mà chưa chứng minh được
-        # có nghiệm hoặc vô nghiệm.
         status = "UNKNOWN"
         solved_grid = None
 

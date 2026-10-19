@@ -16,8 +16,6 @@ def solve_cplex_cp(grid):
         raise ValueError("Sudoku size must be a perfect square.")
 
     model = CpoModel()
-
-    # x[r][c] là giá trị của ô (r, c), từ 1 đến n
     x = [
         [
             model.integer_var(min=1, max=n, name=f"x_{r}_{c}")
@@ -26,14 +24,12 @@ def solve_cplex_cp(grid):
         for r in range(n)
     ]
 
-    # Mỗi hàng và cột chứa các giá trị khác nhau
     for r in range(n):
         model.add(model.all_diff(x[r]))
 
     for c in range(n):
         model.add(model.all_diff([x[r][c] for r in range(n)]))
 
-    # Mỗi box chứa các giá trị khác nhau
     for br in range(0, n, box):
         for bc in range(0, n, box):
             cells = [
@@ -43,7 +39,6 @@ def solve_cplex_cp(grid):
             ]
             model.add(model.all_diff(cells))
 
-    # Giữ nguyên các ô đã cho
     for r in range(n):
         for c in range(n):
             if grid[r][c] != 0:

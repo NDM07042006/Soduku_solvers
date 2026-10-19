@@ -5,8 +5,6 @@ import time
 
 def solve_gurobi(grid):
 
-
-
     start = time.perf_counter()
 
     n = len(grid)
@@ -59,7 +57,6 @@ def solve_gurobi(grid):
                     ) == 1
                 )
 
-    # Ô đã cho
     for r in range(n):
         for c in range(n):
             if grid[r][c] != 0:

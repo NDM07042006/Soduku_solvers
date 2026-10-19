@@ -35,13 +35,7 @@ def sequential_amo(lits, next_var=None):
 
 
 def commander_amo(lits, next_var=None, group_size=3):
-    """
-    Commander Encoding for AMO (Klieber & Kwon).
 
-    Split literals into groups of `group_size`. Inside a group use pairwise AMO.
-    Each group gets a commander variable c with (l -> c) for every l in the group.
-    Then recursively enforce AMO over the commanders.
-    """
     assert group_size >= 2, "group_size must be >= 2 for the recursion to terminate"
     n = len(lits)
     if n <= 1:
@@ -68,14 +62,7 @@ def commander_amo(lits, next_var=None, group_size=3):
 
 
 def product_amo(lits, next_var=None, base=6):
-    """
-    Product Encoding for AMO (Chen, 2010).
 
-    Place literals in a p x q grid (p = ceil(sqrt(n)), q = ceil(n/p)).
-    Row variables u_i and column variables v_j; literal at (i, j) implies u_i and v_j.
-    Two distinct literals differ in a row or a column, so AMO over u and over v
-    (applied recursively) forbids them being true together.
-    """
     n = len(lits)
     if n <= 1:
         return [], next_var
@@ -105,16 +92,7 @@ def product_amo(lits, next_var=None, base=6):
 from math import ceil, log2
 
 def binary_amo(lits, next_var=None):
-    """
-    Binary (bitwise) Encoding for AMO (Frisch & Giannaros).
 
-    Give literal i the index i in binary. Introduce m = ceil(log2 n) auxiliary
-    bit variables b_0..b_{m-1}. If x_i is true, the b's must spell out i:
-        x_i -> b_k      if bit k of i is 1
-        x_i -> not b_k  if bit k of i is 0
-    Two different literals have different indices, so some bit conflicts
-    and they can't both be true.
-    """
     n = len(lits)
     if n <= 1:
         return [], next_var
@@ -132,14 +110,12 @@ def binary_amo(lits, next_var=None):
 
 
 def exactly_one(lits, amo_fn=pairwise_amo, next_var=None, **kw):
-    """ALO + any AMO encoding. Returns (clauses, next_var)."""
     if amo_fn is pairwise_amo:
         return alo(lits) + pairwise_amo(lits), next_var
     amo, next_var = amo_fn(lits, next_var, **kw)
     return alo(lits) + amo, next_var
 
 
-# ---------- brute-force correctness check ----------
 def check_amo(amo_fn, n, **kw):
     lits = list(range(1, n + 1))
     clauses, nv = amo_fn(lits, n + 1, **kw)
